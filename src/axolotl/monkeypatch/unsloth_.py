@@ -6,7 +6,7 @@ import types
 import torch
 from peft import PeftModelForCausalLM
 from torch import nn
-from transformers.models.llama.modeling_llama import LlamaFlashAttention2
+from transformers.models.llama.modeling_llama import LlamaAttention
 
 from axolotl.monkeypatch.utils import detab_code
 from axolotl.utils.logging import get_logger
@@ -45,7 +45,7 @@ def original_apply_o(self, hidden_states):
 
 
 def get_self_attn_code() -> str:
-    forward = inspect.getsource(LlamaFlashAttention2.forward)
+    forward = inspect.getsource(LlamaAttention.forward)
     return forward
 
 
@@ -77,12 +77,10 @@ def integrate_cross_entropy_loss_patch(model_type: str = "llama") -> None:
         )
         return loss
 
-    if model_type == "llama":
-        from transformers.loss import loss_utils
+    from transformers.loss import loss_utils
 
-        loss_utils.ForCausalLMLoss = UnslothForCausalLMLoss  # type: ignore[assignment]
-    else:
-        raise ValueError("Unsupported model type")
+    loss_utils.ForCausalLMLoss = UnslothForCausalLMLoss  # type: ignore[assignment]
+
 
 
 self_attn_lora_patched = False
@@ -94,7 +92,7 @@ def patch_self_attn_lora():
         # prevent patching multiple times
         return
     self_attn_forward = get_self_attn_code()
-    LlamaFlashAttention2._original_forward = self_attn_forward
+    LlamaAttention._original_forward = self_attn_forward
     self_attn_forward, _ = detab_code(self_attn_forward)
     assert ORIGINAL_QKV_CODE in self_attn_forward, "Original qkv code not found"
     assert ORIGINAL_O_CODE in self_attn_forward, "Original o code not found"
@@ -124,7 +122,7 @@ def patch_self_attn_lora():
     exec(self_attn_forward, globals())
     self_attn_lora_patched = True
     LOG.info("patching unsloth attn lora")
-    LlamaFlashAttention2.forward = unsloth_attn_forward
+    LlamaAttention.forward = unsloth_attn_forward
 
 
 def integrate_rope_embeddings():

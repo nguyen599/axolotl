@@ -626,7 +626,12 @@ class AxolotlInputConfig(
             "description": "Number of chunks to use for chunked cross entropy loss"
         },
     )
-
+    unsloth_chunked_cross_entropy: bool | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Whether to use unsloth chunked cross entropy loss for memory efficiency"
+        },
+    )
     tiled_mlp: bool | None = Field(
         default=None,
         json_schema_extra={

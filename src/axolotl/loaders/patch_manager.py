@@ -99,7 +99,14 @@ class PatchManager:
             self.cfg.flash_attention = True
 
     def _apply_chunked_cross_entropy_patch(self):
-        if self.cfg.chunked_cross_entropy:
+        if self.cfg.unsloth_chunked_cross_entropy and self.cfg.chunked_cross_entropy:
+            print('Both unsloth_chunked_cross_entropy and chunked_cross_entropy set -> Used unsloth_chunked_cross_entropy')
+            self.cfg.chunked_cross_entropy = False
+            
+        if self.cfg.unsloth_chunked_cross_entropy:
+            from axolotl.monkeypatch.loss.unsloth_chunked import patch_loss_functions as unsloth_patch_chunked_ce_loss_fn
+            unsloth_patch_chunked_ce_loss_fn()
+        elif self.cfg.chunked_cross_entropy:
             from axolotl.monkeypatch.loss.chunked import patch_chunked_ce_loss_fn
 
             if self.cfg.chunked_cross_entropy_num_chunks:
