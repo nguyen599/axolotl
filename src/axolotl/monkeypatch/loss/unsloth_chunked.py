@@ -388,7 +388,7 @@ def fast_cross_entropy_loss(
     batch, seq_len, d = logits.shape
     assert(labels.shape == (batch, seq_len))
 
-    print('GO to new unsloth fast_cross_entropy_loss')
+    # print('GO to new unsloth fast_cross_entropy_loss')
     loss = Fast_CrossEntropyLoss.apply(
         logits.view(batch*seq_len, d),
         labels.view(-1),
