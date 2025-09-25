@@ -109,7 +109,7 @@ class PatchManager:
         if self.cfg.unsloth_chunked_cross_entropy and self.cfg.chunked_cross_entropy:
             print('Both unsloth_chunked_cross_entropy and chunked_cross_entropy set -> Used unsloth_chunked_cross_entropy')
             self.cfg.chunked_cross_entropy = False
-            
+
         if self.cfg.unsloth_chunked_cross_entropy:
             from axolotl.monkeypatch.loss.unsloth_chunked import patch_loss_functions as unsloth_patch_chunked_ce_loss_fn
             unsloth_patch_chunked_ce_loss_fn()
@@ -189,6 +189,12 @@ class PatchManager:
             )
 
             patch_qwen3_next_modeling_packing()
+
+        if self.cfg.model_config_type == "qwen3":
+            from axolotl.monkeypatch.models.qwen3.modeling import (
+                patch_qwen3_modeling,
+            )
+            patch_qwen3_modeling()
 
         if self.cfg.model_config_type == "mistral3" and self.cfg.processor_type:
             from axolotl.monkeypatch.models.mistral3.mistral_common_tokenizer import (
