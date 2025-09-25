@@ -330,7 +330,7 @@ def patch_qwen3_next_imports():
 
 def patch_qwen3_model():
     from axolotl.monkeypatch.unsloth.models._utils import patch_linear_scaling
-    from axolotl.monkeypatch.unsloth.models.llama import LlamaRotaryEmbedding, LlamaLinearScalingRotaryEmbedding, LlamaModel_fast_forward, LlamaDecoderLayer_fast_forward
+    from axolotl.monkeypatch.unsloth.models.llama import LlamaRotaryEmbedding, LlamaLinearScalingRotaryEmbedding, LlamaModel_fast_forward, LlamaDecoderLayer_fast_forward, fix_prepare_inputs_for_generation
     from axolotl.monkeypatch.unsloth.models.qwen3 import Qwen3Attention_fast_forward
     init_name, function = patch_linear_scaling(
         model_name         = "Qwen3",
@@ -347,6 +347,19 @@ def patch_qwen3_model():
     Qwen3FlashAttention2.forward = Qwen3Attention_fast_forward
     Qwen3DecoderLayer   .forward = LlamaDecoderLayer_fast_forward
     Qwen3Model          .forward = LlamaModel_fast_forward
+    # Qwen3ForCausalLM    .forward = CausalLM_fast_forward(_LlamaModel_fast_forward_inference(Qwen3Attention_fast_forward_inference))
+    # PeftModelForCausalLM.forward = PeftModel_fast_forward
+    fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
+
+    # Solves https://github.com/unslothai/unsloth/issues/168
+    # Static KV Cache was introduced in 4.38.0, causing training to be much slower.
+    # Inferene can now be CUDAGraphed, but we shall retain the old rotary embeddings.
+    # https://github.com/huggingface/transformers/pull/27931
+    # https://github.com/huggingface/transformers/blob/v4.37.2/src/transformers/models/llama/modeling_llama.py
+    import transformers.models.qwen3.modeling_qwen3
+    transformers.models.qwen3.modeling_qwen3.Qwen3RotaryEmbedding = LlamaRotaryEmbedding
+    # modeling_qwen3 = sys.modules["transformers.models.qwen3.modeling_qwen3"]
+    # modeling_qwen3.Qwen3RotaryEmbedding = LlamaRotaryEmbedding
 
 def patch_qwen3_modeling():
     """Apply all Qwen3 model patches."""

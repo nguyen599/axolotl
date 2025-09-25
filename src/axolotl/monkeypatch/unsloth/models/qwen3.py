@@ -14,6 +14,7 @@
 
 from .llama import *
 import os
+import sys
 from .llama import (
     LlamaRotaryEmbedding,
     LlamaLinearScalingRotaryEmbedding,
@@ -222,7 +223,10 @@ def pre_patch():
     # Inferene can now be CUDAGraphed, but we shall retain the old rotary embeddings.
     # https://github.com/huggingface/transformers/pull/27931
     # https://github.com/huggingface/transformers/blob/v4.37.2/src/transformers/models/llama/modeling_llama.py
-    import transformers.models.qwen3.modeling_qwen3
-    transformers.models.qwen3.modeling_qwen3.Qwen3RotaryEmbedding = LlamaRotaryEmbedding
+    # import transformers.models.qwen3.modeling_qwen3
+    # transformers.models.qwen3.modeling_qwen3.Qwen3RotaryEmbedding = LlamaRotaryEmbedding
+    modeling_qwen3 = sys.modules["transformers.models.qwen3.modeling_qwen3"]
+    modeling_qwen3.Qwen3RotaryEmbedding = LlamaRotaryEmbedding
+
     return
 pass
