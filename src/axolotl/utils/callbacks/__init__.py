@@ -17,7 +17,6 @@ import torch
 import torch.distributed as dist
 import wandb
 from datasets import load_dataset
-from optimum.bettertransformer import BetterTransformer
 from tqdm import tqdm
 from transformers import (
     GenerationConfig,
@@ -79,6 +78,7 @@ class SaveBetterTransformerModelCallback(TrainerCallback):
                 args.output_dir,
                 f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}",
             )
+            from optimum.bettertransformer import BetterTransformer
 
             model = BetterTransformer.reverse(kwargs["model"])
             model.save_pretrained(checkpoint_folder)
