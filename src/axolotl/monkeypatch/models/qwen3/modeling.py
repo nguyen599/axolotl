@@ -327,6 +327,8 @@ def patch_qwen3_next_imports():
 
     return unpatch
 
+def from_pretrained():
+    pass
 
 def patch_qwen3_model():
     from axolotl.monkeypatch.unsloth.models._utils import patch_linear_scaling
