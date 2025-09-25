@@ -190,7 +190,7 @@ class PatchManager:
 
             patch_qwen3_next_modeling_packing()
 
-        if self.cfg.model_config_type == "qwen3":
+        if self.cfg.model_config_type == "qwen3" and os.getenv('ENABLE_QWEN3_PATCH'):
             from axolotl.monkeypatch.models.qwen3.modeling import (
                 patch_qwen3_modeling,
             )
