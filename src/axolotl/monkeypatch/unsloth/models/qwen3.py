@@ -215,7 +215,7 @@ def pre_patch():
     # Qwen3Model          .forward = LlamaModel_fast_forward
     # Qwen3ForCausalLM    .forward = CausalLM_fast_forward(_LlamaModel_fast_forward_inference(Qwen3Attention_fast_forward_inference))
     # PeftModelForCausalLM.forward = PeftModel_fast_forward
-    fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
+    # fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
 
     # Solves https://github.com/unslothai/unsloth/issues/168
     # Static KV Cache was introduced in 4.38.0, causing training to be much slower.

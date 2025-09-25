@@ -196,6 +196,85 @@ KV_CACHE_INCREMENT = 512 # KV Cache update size
 # SDPA has GQA internally
 SDPA_HAS_GQA = "enable_gqa" in scaled_dot_product_attention.__doc__
 
+from math import sqrt as math_sqrt
+KV_CACHE_INCREMENT = 512 # KV Cache update size
+torch_nn_functional_softmax = torch.nn.functional.softmax
+# SDPA has GQA internally
+SDPA_HAS_GQA = "enable_gqa" in scaled_dot_product_attention.__doc__
+
+
+# Fix new HF's inference code
+def _fast_prepare_inputs_for_generation(self, input_ids, attention_mask=None, **kwargs,):
+    past_key_values = kwargs.get("past_key_values", None)
+    if past_key_values is not None:
+        # Check for uninitialized DynamicCache
+        if len(past_key_values) == 0:
+            past_key_values = None
+            kwargs["past_key_values"] = None
+        # New since 4.56
+        elif hasattr(past_key_values, "get_seq_length") and past_key_values.get_seq_length() == 0:
+            past_key_values = None
+            kwargs["past_key_values"] = None
+        else:
+            bs, cache_length = input_ids.shape
+            input_ids = input_ids[:,[-1]]
+
+            # Get to the base model
+            base_model = self
+            if hasattr(base_model, 'base_model_prefix'):
+                base_model = getattr(base_model, base_model.base_model_prefix)
+
+            if hasattr(base_model, "_prepare_4d_causal_attention_mask_with_cache_position"):
+                def needs_device_kw(fn) -> bool:
+                    try:
+                        sig = inspect.signature(inspect.unwrap(fn))
+                        return "device" in sig.parameters
+                    except:
+                        # transformers <= 4.51.3 includes device arg but > 4.51.3 does not
+                        return transformers_version < Version("4.52.0")
+
+                kwargs = {
+                    "sequence_length": 1,
+                    "target_length": cache_length,
+                    "dtype": self.dtype,
+                    "cache_position": torch.arange(cache_length, cache_length+1, device=input_ids.device),
+                    "batch_size": bs,
+                    "config": self.config,
+                    "past_key_values": past_key_values,
+                }
+                try:
+                    if needs_device_kw(base_model._prepare_4d_causal_attention_mask_with_cache_position):
+                        kwargs["device"] = input_ids.device
+                except:
+                    print(f"Unsloth: Could not inspect signature of {base_model._prepare_4d_causal_attention_mask_with_cache_position}")
+
+                attention_mask = base_model._prepare_4d_causal_attention_mask_with_cache_position(
+                    attention_mask,
+                    **kwargs,
+                )
+            else:
+                attention_mask = attention_mask[:,[-1]]
+                if transformers_version <= Version("4.52.4"):
+                    logger.warning_once(
+                        f"{self.__class__.__name__} has no `_prepare_4d_causal_attention_mask_with_cache_position` method "
+                        "defined in its base modeling class. Compiled forward passes will be sub-optimal. If you're "
+                        "writing code, see Llama for an example implementation. If you're a user, please report this "
+                        "issue on GitHub."
+                    )
+
+    if "cache_position" in kwargs:
+        kwargs["position_ids"] = kwargs["cache_position"]
+    return { "input_ids" : input_ids, "attention_mask": attention_mask, **kwargs, }
+pass
+
+
+def fix_prepare_inputs_for_generation(module):
+    # Fix prepare_inputs_for_generation
+    if hasattr(module, "prepare_inputs_for_generation"):
+        module.prepare_inputs_for_generation = _fast_prepare_inputs_for_generation
+    pass
+pass
+
 torch_nn_functional_silu = torch.nn.functional.silu
 def fast_swiglu_inference(self, X, temp_gate = None, temp_up = None, gate_multiplier = None, down_multiplier = None):
     # gate = self.gate_proj(X)
