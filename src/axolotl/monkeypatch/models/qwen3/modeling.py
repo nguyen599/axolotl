@@ -380,6 +380,7 @@ def patch_qwen3_modeling():
     """Apply all Qwen3 model patches."""
     # patch_qwen3_next_imports()
     # patch_qwen3_next_decoder_layer()
-    patch_qwen3_model()
+    # patch_qwen3_model()
+    Qwen3ForCausalLM    .__init__ = new_init
 
     LOG.info("Applied Qwen3 patch for Unsloth fast forward")
