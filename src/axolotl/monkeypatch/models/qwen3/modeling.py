@@ -330,17 +330,23 @@ def patch_qwen3_next_imports():
 def from_pretrained():
     pass
 
-def new_init(self, config):
-    super().__init__(config)
-    self.model = Qwen3Model(config)
-    self.vocab_size = config.vocab_size
-    self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+# def new_init(self, config):
+#     super().__init__(config)
+#     self.model = Qwen3Model(config)
+#     self.vocab_size = config.vocab_size
+#     self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-    # Initialize weights and apply final processing
-    self.post_init()
-    import deepspeed
-    deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
+#     # Initialize weights and apply final processing
+#     self.post_init()
+#     import deepspeed
+#     deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
 
+
+class Qwen3ForCausalLMWithDS(Qwen3ForCausalLM):
+    def __init__(self, config):
+        super().__init__(config)
+        import deepspeed
+        deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
 
 def patch_qwen3_model():
     from axolotl.monkeypatch.unsloth.models._utils import patch_linear_scaling
@@ -381,6 +387,6 @@ def patch_qwen3_modeling():
     # patch_qwen3_next_imports()
     # patch_qwen3_next_decoder_layer()
     # patch_qwen3_model()
-    Qwen3ForCausalLM    .__init__ = new_init
+    Qwen3ForCausalLM = Qwen3ForCausalLMWithDS
 
     LOG.info("Applied Qwen3 patch for Unsloth fast forward")
