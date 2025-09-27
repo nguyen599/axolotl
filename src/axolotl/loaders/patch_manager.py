@@ -194,7 +194,8 @@ class PatchManager:
             from axolotl.monkeypatch.models.qwen3.modeling import (
                 patch_qwen3_modeling,
             )
-            patch_qwen3_modeling()
+            # patch_qwen3_modeling()
+            pass
 
         if self.cfg.model_config_type == "mistral3" and self.cfg.processor_type:
             from axolotl.monkeypatch.models.mistral3.mistral_common_tokenizer import (
