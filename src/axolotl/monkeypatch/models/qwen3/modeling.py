@@ -23,7 +23,7 @@ except:
     Qwen3SdpaAttention   = Qwen3Attention
     Qwen3FlashAttention2 = Qwen3Attention
 pass
-
+from torch import nn
 
 from axolotl.utils.logging import get_logger
 
@@ -330,6 +330,18 @@ def patch_qwen3_next_imports():
 def from_pretrained():
     pass
 
+def new_init(self, config):
+    super().__init__(config)
+    self.model = Qwen3Model(config)
+    self.vocab_size = config.vocab_size
+    self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+
+    # Initialize weights and apply final processing
+    self.post_init()
+    import deepspeed
+    deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
+
+
 def patch_qwen3_model():
     from axolotl.monkeypatch.unsloth.models._utils import patch_linear_scaling
     from axolotl.monkeypatch.unsloth.models.llama import LlamaRotaryEmbedding, LlamaLinearScalingRotaryEmbedding, LlamaModel_fast_forward, LlamaDecoderLayer_fast_forward, fix_prepare_inputs_for_generation
@@ -349,6 +361,7 @@ def patch_qwen3_model():
     Qwen3FlashAttention2.forward = Qwen3Attention_fast_forward
     Qwen3DecoderLayer   .forward = LlamaDecoderLayer_fast_forward
     Qwen3Model          .forward = LlamaModel_fast_forward
+    Qwen3ForCausalLM    .__init__ = new_init
     # Qwen3ForCausalLM    .forward = CausalLM_fast_forward(_LlamaModel_fast_forward_inference(Qwen3Attention_fast_forward_inference))
     # PeftModelForCausalLM.forward = PeftModel_fast_forward
     fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
