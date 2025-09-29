@@ -95,7 +95,7 @@ def get_cu_seqlens(attn_mask):
 
     return torch.stack(results).to(dtype=torch.int32), torch.stack(max_seq_lens)
 
-
+@torch.compiler.disable(recursive=False)
 def get_cu_seqlens_from_pos_ids(
     position_ids: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor]:

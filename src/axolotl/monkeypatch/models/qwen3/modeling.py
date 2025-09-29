@@ -8,7 +8,7 @@ from transformers.models.qwen3.modeling_qwen3 import (
     Qwen3Attention,
     Qwen3DecoderLayer,
     Qwen3Model,
-    # Qwen3ForCausalLM,
+    Qwen3ForCausalLM,
 )
 from transformers.modeling_attn_mask_utils import (
     _prepare_4d_causal_attention_mask_for_sdpa,
@@ -349,96 +349,96 @@ def from_pretrained():
 #         deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
 #         print('heeeeeeeeeeeeeeexxxxxxxxxxx')
 
-from typing import Callable, Optional, Union
-from transformers.cache_utils import Cache, DynamicCache
-from transformers.generation import GenerationMixin
-from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
-from transformers.utils import TransformersKwargs, auto_docstring, can_return_tuple
-from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
-from transformers.processing_utils import Unpack
-from transformers.models.qwen3.modeling_qwen3 import Qwen3PreTrainedModel
-import deepspeed
+# from typing import Callable, Optional, Union
+# from transformers.cache_utils import Cache, DynamicCache
+# from transformers.generation import GenerationMixin
+# from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
+# from transformers.utils import TransformersKwargs, auto_docstring, can_return_tuple
+# from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
+# from transformers.processing_utils import Unpack
+# from transformers.models.qwen3.modeling_qwen3 import Qwen3PreTrainedModel
+# import deepspeed
 
-class Qwen3ForCausalLMWithDS(Qwen3PreTrainedModel, GenerationMixin):
-    _tied_weights_keys = ["lm_head.weight"]
-    _tp_plan = {"lm_head": "colwise_rep"}
-    _pp_plan = {"lm_head": (["hidden_states"], ["logits"])}
+# class Qwen3ForCausalLMWithDS(Qwen3PreTrainedModel, GenerationMixin):
+#     _tied_weights_keys = ["lm_head.weight"]
+#     _tp_plan = {"lm_head": "colwise_rep"}
+#     _pp_plan = {"lm_head": (["hidden_states"], ["logits"])}
 
-    def __init__(self, config):
-        super().__init__(config)
-        self.model = Qwen3Model(config)
-        self.vocab_size = config.vocab_size
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+#     def __init__(self, config):
+#         super().__init__(config)
+#         self.model = Qwen3Model(config)
+#         self.vocab_size = config.vocab_size
+#         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # Initialize weights and apply final processing
-        self.post_init()
-        deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
-        print('heeeeeeeeeeeeeeexxxxxxxxxxx')
+#         # Initialize weights and apply final processing
+#         self.post_init()
+#         deepspeed.zero.register_external_parameter(self, self.lm_head.weight)
+#         print('heeeeeeeeeeeeeeexxxxxxxxxxx')
 
-    @can_return_tuple
-    @auto_docstring
-    def forward(
-        self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[Cache] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        labels: Optional[torch.LongTensor] = None,
-        use_cache: Optional[bool] = None,
-        cache_position: Optional[torch.LongTensor] = None,
-        logits_to_keep: Union[int, torch.Tensor] = 0,
-        **kwargs: Unpack[TransformersKwargs],
-    ) -> CausalLMOutputWithPast:
-        r"""
-        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
-            Labels for computing the masked language modeling loss. Indices should either be in `[0, ...,
-            config.vocab_size]` or -100 (see `input_ids` docstring). Tokens with indices set to `-100` are ignored
-            (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
+#     @can_return_tuple
+#     @auto_docstring
+#     def forward(
+#         self,
+#         input_ids: Optional[torch.LongTensor] = None,
+#         attention_mask: Optional[torch.Tensor] = None,
+#         position_ids: Optional[torch.LongTensor] = None,
+#         past_key_values: Optional[Cache] = None,
+#         inputs_embeds: Optional[torch.FloatTensor] = None,
+#         labels: Optional[torch.LongTensor] = None,
+#         use_cache: Optional[bool] = None,
+#         cache_position: Optional[torch.LongTensor] = None,
+#         logits_to_keep: Union[int, torch.Tensor] = 0,
+#         **kwargs: Unpack[TransformersKwargs],
+#     ) -> CausalLMOutputWithPast:
+#         r"""
+#         labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+#             Labels for computing the masked language modeling loss. Indices should either be in `[0, ...,
+#             config.vocab_size]` or -100 (see `input_ids` docstring). Tokens with indices set to `-100` are ignored
+#             (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
 
-        Example:
+#         Example:
 
-        ```python
-        >>> from transformers import AutoTokenizer, Qwen3ForCausalLM
+#         ```python
+#         >>> from transformers import AutoTokenizer, Qwen3ForCausalLM
 
-        >>> model = Qwen3ForCausalLM.from_pretrained("Qwen/Qwen3-8B")
-        >>> tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+#         >>> model = Qwen3ForCausalLM.from_pretrained("Qwen/Qwen3-8B")
+#         >>> tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
 
-        >>> prompt = "Hey, are you conscious? Can you talk to me?"
-        >>> inputs = tokenizer(prompt, return_tensors="pt")
+#         >>> prompt = "Hey, are you conscious? Can you talk to me?"
+#         >>> inputs = tokenizer(prompt, return_tensors="pt")
 
-        >>> # Generate
-        >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
-        >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
-        ```"""
-        outputs: BaseModelOutputWithPast = self.model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
-            use_cache=use_cache,
-            cache_position=cache_position,
-            **kwargs,
-        )
+#         >>> # Generate
+#         >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
+#         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+#         "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
+#         ```"""
+#         outputs: BaseModelOutputWithPast = self.model(
+#             input_ids=input_ids,
+#             attention_mask=attention_mask,
+#             position_ids=position_ids,
+#             past_key_values=past_key_values,
+#             inputs_embeds=inputs_embeds,
+#             use_cache=use_cache,
+#             cache_position=cache_position,
+#             **kwargs,
+#         )
 
-        hidden_states = outputs.last_hidden_state
-        # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
-        slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
-        logits = self.lm_head(hidden_states[:, slice_indices, :])
+#         hidden_states = outputs.last_hidden_state
+#         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
+#         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+#         logits = self.lm_head(hidden_states[:, slice_indices, :])
 
-        loss = None
-        if labels is not None:
-            loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
+#         loss = None
+#         if labels is not None:
+#             loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
 
-        return CausalLMOutputWithPast(
-            loss=loss,
-            logits=logits,
-            past_key_values=outputs.past_key_values,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
-        )
+#         return CausalLMOutputWithPast(
+#             loss=loss,
+#             logits=logits,
+#             past_key_values=outputs.past_key_values,
+#             hidden_states=outputs.hidden_states,
+#             attentions=outputs.attentions,
+        # )
 
 def patch_qwen3_model():
     from axolotl.monkeypatch.unsloth.models._utils import patch_linear_scaling
@@ -461,7 +461,7 @@ def patch_qwen3_model():
     Qwen3Model          .forward = LlamaModel_fast_forward
     # Qwen3ForCausalLM    .forward = CausalLM_fast_forward(_LlamaModel_fast_forward_inference(Qwen3Attention_fast_forward_inference))
     # PeftModelForCausalLM.forward = PeftModel_fast_forward
-    # fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
+    fix_prepare_inputs_for_generation(Qwen3ForCausalLM)
 
     # Solves https://github.com/unslothai/unsloth/issues/168
     # Static KV Cache was introduced in 4.38.0, causing training to be much slower.
@@ -477,8 +477,8 @@ def patch_qwen3_modeling():
     """Apply all Qwen3 model patches."""
     # patch_qwen3_next_imports()
     # patch_qwen3_next_decoder_layer()
-    # patch_qwen3_model()
-    import transformers.models.qwen3.modeling_qwen3
-    transformers.models.qwen3.modeling_qwen3.Qwen3ForCausalLM = Qwen3ForCausalLMWithDS
+    patch_qwen3_model()
+    # import transformers.models.qwen3.modeling_qwen3
+    # transformers.models.qwen3.modeling_qwen3.Qwen3ForCausalLM = Qwen3ForCausalLMWithDS
 
     LOG.info("Applied Qwen3 patch for Unsloth fast forward")
