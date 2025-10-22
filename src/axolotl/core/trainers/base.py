@@ -225,17 +225,6 @@ class AxolotlTrainer(
 
         data_collator = self.data_collator if is_training else self.eval_data_collator
 
-        if dataset.column_names and "length" in dataset.column_names:
-            dataset = dataset.remove_columns(["length"])
-        if (
-            dataset.column_names
-            and "position_ids" in dataset.column_names
-            and "attention_mask" in dataset.column_names
-            and self.args.sample_packing
-            and self.args.sample_packing_drop_attention_mask
-        ):
-            dataset = dataset.remove_columns(["attention_mask"])
-
         if isinstance(dataset, datasets.Dataset):
             if is_training:
                 if not self.args.sample_packing or self.args.pretraining:
@@ -293,6 +282,18 @@ class AxolotlTrainer(
             or (not is_training and self.args.eval_sample_packing is not False)
         ):
             self.accelerator.even_batches = False
+
+        if dataset.column_names and "length" in dataset.column_names:
+            dataset = dataset.remove_columns(["length"])
+
+        if (
+            dataset.column_names
+            and "position_ids" in dataset.column_names
+            and "attention_mask" in dataset.column_names
+            and self.args.sample_packing
+            and self.args.sample_packing_drop_attention_mask
+        ):
+            dataset = dataset.remove_columns(["attention_mask"])
 
         dataloader = DataLoader(dataset, **dataloader_params)
 
@@ -559,13 +560,6 @@ class AxolotlTrainer(
             AcceleratorState._reset_state(reset_partial_state=True)
 
         super().create_accelerator_and_postprocess()
-
-        if self.is_fsdp_enabled:
-            if (
-                "limit_all_gathers" in self.args.fsdp_config
-                and self.args.fsdp_config["limit_all_gathers"]
-            ):
-                self.accelerator.state.fsdp_plugin.limit_all_gathers = True
 
     def additional_accelerator_args(
         self, fp8: bool = False, enable_fsdp_float8_all_gather: bool = False, **kwargs

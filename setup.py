@@ -26,7 +26,6 @@ def parse_requirements(extras_require_map):
                 _install_requires.append(line)
     try:
         xformers_version = [req for req in _install_requires if "xformers" in req][0]
-        autoawq_version = [req for req in _install_requires if "autoawq" in req][0]
         if "Darwin" in platform.system():
             # skip packages not compatible with OSX
             skip_packages = [
@@ -34,7 +33,6 @@ def parse_requirements(extras_require_map):
                 "triton",
                 "mamba-ssm",
                 "xformers",
-                "autoawq",
                 "liger-kernel",
             ]
             _install_requires = [
@@ -51,7 +49,7 @@ def parse_requirements(extras_require_map):
             try:
                 torch_version = version("torch")
             except PackageNotFoundError:
-                torch_version = "2.6.0"  # default to torch 2.6
+                torch_version = "2.8.0"  # default to torch 2.8.0
             _install_requires.append(f"torch=={torch_version}")
 
             version_match = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?", torch_version)
@@ -87,7 +85,6 @@ def parse_requirements(extras_require_map):
                     _install_requires.append("xformers==0.0.28.post2")
                 else:
                     _install_requires.append("xformers>=0.0.28.post3")
-                _install_requires.pop(_install_requires.index(autoawq_version))
                 extras_require_map.pop("vllm")
             elif (major, minor) >= (2, 4):
                 extras_require_map.pop("vllm")
